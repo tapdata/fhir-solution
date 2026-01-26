@@ -1,2 +1,255 @@
-# fhir-solution
-A solution for FHIR API without need of any changes to your existing systems - by MongoDB and TapData
+# Tapdata Hybrid FHIR Project
+
+Build comprehensive FHIR R4-compliant APIs from legacy relational databases using Tapdata’s Operational Data Hub (ODH) and real-time data transformation. Leverage Tapdata’s CDC-powered data pipeline with MongoDB backend to convert proprietary healthcare data models into interoperable FHIR standards—enabling seamless healthcare interoperability without modifying your existing business applications.
+
+## 🏗️ Project Structure
+
+```
+tapdata-fhir/
+├── backend/                    # Python FastAPI + MongoDB + PostgreSQL
+│   ├── fhir_toolkit/          # Main application package
+│   │   ├── api.py             # FastAPI endpoints (3 APIs)
+│   │   ├── search_builders.py # Advanced FHIR search logic
+│   │   ├── db.py              # MongoDB connection
+│   │   ├── config.py          # Configuration
+│   │   ├── synth.py           # Legacy synthetic data inspection in PG
+│   │   ├── transform.py       # Legacy data and FHIR model structure transformation
+│   │   └── mappings.py        # FHIR resource mappings
+│   ├── .venv/                 # Python virtual environment
+│   └── pyproject.toml         # Python dependencies
+├── frontend/                   # Next.js React application
+│   ├── app/                   # Next.js app router
+│   ├── components/            # React components
+│   │   └── views/fhir/        # FHIR-specific views
+│   │       ├── FhirApiTester.jsx      # Interactive API demonstrator
+│   │       ├── FhirResourceBrowser.jsx # Resource browser
+│   │       └── LegacySyntheticPanel.jsx  # Legacy synthetic data UI
+│   │       └── DataTransformation.jsx  # Transformation UI and Tapdata demo link
+│   ├── public/fhir-config/    # FHIR search configuration
+│   └── package.json           # Node dependencies
+├── docs/                       # Project documentation
+├── .env.local.example         # Environment template
+├── start-server.sh            # Backend startup script
+├── start-frontend.sh          # Frontend startup script
+└── README.md                  # This file
+```
+
+## ✨ Features
+
+**Zero-touch source systems**: Keep legacy applications untouched while exposing FHIR APIs
+**Real-time sync**: CDC captures changes instantly; MongoDB stores transformed FHIR data
+**Production-ready APIs**: Deploy FHIR R4-compliant REST endpoints in days, not months
+**Future-proof architecture**: Add new data sources or target systems without modifying legacy code
+**Schema-free flexibility**: MongoDB's document model natively supports FHIR's nested, complex, and variable-structure resources
+
+### Data visualization
+
+1. **Data Inspection**
+   - Original data inspection (synthetic legacy data in RDBMS)
+   - Data transfomation (graphical relationships from legacy data to FHIR model)
+2. **FHIR R4 API** - Standards-compliant healthcare interoperability
+   - Patient search (20+ parameters)
+   - Encounter search (15+ parameters)
+   - Accelerated and canonical search modes
+   - Cross-resource queries (Patient → Encounter relationships)
+
+### Real-time Data Transformation
+
+This project includes an external link to Tapdata Cloud to demonstrate the real-time data transformation capabilities that are typically required to generate FHIR models.
+
+* **Real-time CDC (Change Data Capture)**: Automatically detect and stream data changes from source systems
+
+* **Visual data mapping**: No-code/low-code transformation designer
+
+* **Continuous synchronization**: Keep FHIR models in sync with legacy data in real-time
+
+* **Enterprise-grade reliability**: Built-in error handling, monitoring, and data validation
+
+* **Scalable transformation**: Transform millions of healthcare records efficiently
+
+  
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- Node.js 20+
+
+### 1. Backend Setup
+
+```bash
+# Set environment variables
+cp .env.local.example .env.local
+# Edit .env.local with your MongoDB URI and tenant
+cp ./backend/.env.sample ./backend/.env
+
+# Start backend server
+./start-server.sh
+
+# Backend runs on http://localhost:8000
+```
+
+### 2. Frontend Setup
+
+```bash
+# Start frontend development server
+cd frontend
+npm install
+cd ..
+./start-frontend.sh
+
+# Frontend runs on http://localhost:3000
+```
+
+### 3. Explore the System
+
+Visit http://localhost:3000 and explore:
+
+1. **Synthetic Data Tab**: Browse original relational data from PostgreSQL
+
+2. **Data Transformation Tab**: Visualize how data is transformed to FHIR format
+
+3. **Data Viewer Tab**: Browse the materialized view of FHIR data in MongoDB
+
+4. **FHIR API Tab**: Execute 31+ pre-built query examples
+
+   
+
+## 📚 API Documentation
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI Spec**: http://localhost:8000/openapi.json
+
+## 🎯 Usage Examples
+
+### Via Interactive Demonstrator (Recommended)
+
+1. Open http://localhost:3000
+2. Navigate to "Synthetic Data Tab" and check the legacy relational data
+3. Navigate to "Data Transformation Tab" and check the data transformation
+4. Click "view the process" button to browse the data transformation tasks and processes
+5. Navigate to "FHIR API Tab"
+6. Click any example button (e.g., "Female Patients")
+7. Query executes automatically with results displayed
+
+### Via API (cURL)
+
+```bash
+# Search for female patients (accelerated mode)
+curl -H "x-search-mode: accelerated" \
+     "http://localhost:8000/fhir/Patient?gender=female&limit=10"
+
+# Find encounters for a specific patient (cross-resource)
+curl "http://localhost:8000/fhir/Encounter?subject.identifier=id|A224515(2)&limit=10"
+
+# Complex query: Recent encounters for a doctor at specific hospital
+curl "http://localhost:8000/fhir/Encounter?participant.identifier=D-1310&service-provider=QH&date-start=ge2025-09-01&limit=10"
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```bash
+# Tapdata
+TAPDATA_API_URL=https://cloud.tapdata.net/api
+TAPDATA_TENANT_ID=your-tenant-id
+
+# === PostgreSQL Configuration (Source Data) ===
+PG_HOST=ec2-instance.aws.amazonaws.com
+PG_PORT=5432
+PG_DATABASE=healthcare_db
+PG_USER=postgres
+PG_PASSWORD=secure-password
+
+# Frontend (optional)
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+NEXT_PUBLIC_ENABLE_FHIR=true
+```
+
+## 📖 Documentation
+
+- [Setup Guide](docs/SETUP_COMPLETE.md)
+- [API Documentation](docs/API_DOCS_INTEGRATION.md)
+- [Three APIs Overview](docs/THREE_APIS_COMPLETE.md)
+- [Web Application Guide](docs/WEB_APP_COMPLETE.md)
+- [Frontend Access](docs/FRONTEND_ACCESS.md)
+- [Quick Start](QUICK_START.md)
+- [Getting Started](START_HERE.md)
+- Field mappings (`docs/SPEC_FIELD_MAPPING.md`) – regenerate via `python3 scripts/generate_field_mapping.py`
+
+## 🏥 Healthcare Data Model
+
+### FHIR Envelope Pattern
+
+Resources are stored with three sections:
+
+```json
+{
+  "tenant": "your-tenant",
+  "resourceType": "Patient",
+  "resource": { /* Standard FHIR resource */ },
+  "app": { /* Application-specific data */ },
+  "search": { /* Pre-indexed search fields */ }
+}
+```
+
+
+
+## 🌟 Key Capabilities
+
+### MongoDB Document Capabilities
+
+- **Single Document**: No joins, faster queries
+- **Schema-Free**: Add extensions without database migration
+- **Native Array Support**: Multiple identifiers, addresses, contacts stored naturally
+- **Flexible Structure**: JSON like fields match FHIR model perfectly
+- **Version Compatible**: Old and new FHIR versions coexist in same collection
+- **Rich Type Support**: Native support for dates, nested objects, arrays
+
+### Tapdata Data Transformation Capabilities
+
+**Real-Time CDC**:
+
+- Change Data Capture without business modification and source impact
+- Detects changes in source PostgreSQL tables instantly
+- Minimal latency between source and target updates
+- Supports high-volume change streams
+
+**Data Enrichment**:
+- Add derived fields (e.g., age calculated from birthdate)
+- Join data from multiple source tables
+- Aggregate and summarize information
+
+**Data Cleansing**:
+- Normalize inconsistent data formats
+- Remove or mask sensitive information
+
+**Schema Flexibility**:
+- Source schema can evolve without breaking pipeline
+- Automatic field discovery and mapping
+- Handle new tables dynamically
+
+## 🤝 Contributing
+
+This is a demonstration/reference implementation showing:
+- FHIR R4 API design patterns
+- MongoDB document design for healthcare
+- Tapdata Integrated data transformation workflows
+- Fast search with pre-computed indexes
+- Multi-API architecture (Admin, App, FHIR)
+- Interactive API exploration tools
+
+## 📝 License
+
+[Your License Here]
+
+## 🙏 Acknowledgments
+
+- Built with FastAPI, Next.js 14, and MongoDB
+- Data Transformation by Tapdata
+- FHIR R4 specification by HL7
+- Tailwind CSS for styling
+- Monaco Editor for JSON viewing
