@@ -1,6 +1,7 @@
-# Tapdata Hybrid FHIR Project
+# Hybrid FHIR Project
+A comprehensive FHIR R4 compliant healthcare data management system built with MongoDB backend and TapData pipelines.   Featuring advanced search capabilities and an interactive API demonstrator. This solution leverages Tapdata’s CDC data pipeline to replicate data from legacy system and transform proprietary healthcare data models into interoperable FHIR standards, enabling seamless healthcare interoperability without modifying your existing business applications. 
 
-Build comprehensive FHIR R4-compliant APIs from legacy relational databases using Tapdata’s Operational Data Hub (ODH) and real-time data transformation. Leverage Tapdata’s CDC-powered data pipeline with MongoDB backend to convert proprietary healthcare data models into interoperable FHIR standards—enabling seamless healthcare interoperability without modifying your existing business applications.
+
 
 ## 🏗️ Project Structure
 
