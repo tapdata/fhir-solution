@@ -1,4 +1,10 @@
 # Hybrid FHIR Project
+> [!NOTE]
+>
+> This is a combined solution based on the fork of the MongoDB GitHub repository (https://github.com/mongodb-industry-solutions/hybrid-fhir-odl).
+
+
+
 A comprehensive FHIR R4 compliant healthcare data management system built with MongoDB backend and TapData pipelines.   Featuring advanced search capabilities and an interactive API demonstrator. This solution leverages Tapdata’s CDC data pipeline to replicate data from legacy system and transform proprietary healthcare data models into interoperable FHIR standards, enabling seamless healthcare interoperability without modifying your existing business applications. 
 
 
@@ -12,6 +18,7 @@ tapdata-fhir/
 │   │   ├── api.py             # FastAPI endpoints (3 APIs)
 │   │   ├── search_builders.py # Advanced FHIR search logic
 │   │   ├── db.py              # MongoDB connection
+│   │   ├── db_pg.py           # PostgreSQL connection
 │   │   ├── config.py          # Configuration
 │   │   ├── synth.py           # Legacy synthetic data inspection in PG
 │   │   ├── transform.py       # Legacy data and FHIR model structure transformation
@@ -22,8 +29,9 @@ tapdata-fhir/
 │   ├── app/                   # Next.js app router
 │   ├── components/            # React components
 │   │   └── views/fhir/        # FHIR-specific views
-│   │       ├── FhirApiTester.jsx      # Interactive API demonstrator
-│   │       ├── FhirResourceBrowser.jsx # Resource browser
+│   │       ├── FhirOverview.jsx        # Architecture Overview
+│   │       ├── FhirApiTester.jsx       # Interactive API demonstrator
+│   │       ├── FhirResourceBrowser.jsx # FHIR Resource browser
 │   │       └── LegacySyntheticPanel.jsx  # Legacy synthetic data UI
 │   │       └── DataTransformation.jsx  # Transformation UI and Tapdata demo link
 │   ├── public/fhir-config/    # FHIR search configuration

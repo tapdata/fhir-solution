@@ -26,6 +26,17 @@ def get_collection():
     db = get_client()[settings.mongodb_db]
     return db[settings.mongodb_collection]
 
+def get_fhir_collection(resource_type: str):
+    client = get_client()
+    db = client[settings.mongodb_db]
+    
+    if resource_type.lower() == "patient":
+        return db[settings.collection_patient]
+    elif resource_type.lower() == "encounter":
+        return db[settings.collection_encounter]
+    else:
+        # Fallback or error, for now default to Patient or raise error
+        return db[settings.collection_patient]
 
 def _same_key(existing: Dict[str, Any], keys: List[Tuple[str, int]]) -> bool:
     """Compare key spec (order matters)."""

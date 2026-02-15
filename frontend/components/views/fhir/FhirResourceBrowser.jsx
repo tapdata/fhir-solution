@@ -1,121 +1,180 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
-import { Search, RefreshCw, Eye } from "lucide-react";
+import { Search, RefreshCw, Database } from "lucide-react";
 import JsonEditor from "./JsonEditor";
+
 const API = (path) => `/api/internal${path.startsWith("/") ? path : `/${path}`}`;
+
+// Helpers to extract data from FHIR structure
+const getIdentifierValue = (identifiers, systemKey) => {
+  if (!Array.isArray(identifiers)) return "-";
+  // Simple check if system string contains the key (e.g. "adminid")
+  const found = identifiers.find(i => i.system && i.system.toLowerCase().includes(systemKey.toLowerCase()));
+  return found ? found.value : "-";
+};
+
+const getPatientName = (resource, app) => {
+  if (resource.name && resource.name.length > 0 && resource.name[0].text) {
+    return resource.name[0].text;
+  }
+  if (app && app.patientName) {
+    return app.patientName;
+  }
+  return "Unknown";
+};
+
 export default function FhirResourceBrowser() {
-  const [resourceTypes, setResourceTypes] = useState([]);
-  const [resourceType, setResourceType] = useState("");
+  const [resourceType, setResourceType] = useState("Patient");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
 
-  useEffect(() => {
-    fetch(API("/inspect/distinctResourceTypes"))
-      .then(r => r.json())
-      .then(d => { setResourceTypes(d.resourceTypes || []); setResourceType(d.resourceTypes?.[0] || ""); });
-  }, []);
-
   const fetchList = async () => {
-    const params = new URLSearchParams();
-    if (resourceType) params.set("resourceType", resourceType);
-    if (query) params.set("q", query);
-    params.set("page", String(page));
-    params.set("limit", String(limit));
-    const res = await fetch(API(`/inspect/resources?${params.toString()}`));
-    const data = await res.json();
-    setItems(data.items || []);
-    setTotal(data.total || 0);
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("resourceType", resourceType);
+      if (query) params.set("q", query);
+      params.set("page", String(page));
+      params.set("limit", String(limit));
+
+      const res = await fetch(API(`/inspect/resources?${params.toString()}`));
+      const data = await res.json();
+      setItems(data.items || []);
+      setTotal(data.total || 0);
+    } catch (e) {
+      console.error("Fetch failed", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { if (resourceType) fetchList(); }, [resourceType, page, limit]);
+  // Reload when type/page changes
+  useEffect(() => {
+    setPage(1); // reset to page 1 on type change
+    setQuery("");
+    setSelected(null);
+  }, [resourceType]);
+
+  useEffect(() => {
+    fetchList();
+  }, [resourceType, page, limit]); // Removed 'query' from deps to avoid debounce issues, use enter/click
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Resource Type</label>
-          <select className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200"
-            value={resourceType} onChange={(e)=>setResourceType(e.target.value)}>
-            {resourceTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <div className="flex-1">
-          <label className="block text-xs text-slate-400 mb-1">Search (ADMINID, caseNum, doctorCode, teamCode, hospCode, id)</label>
+    <div className="flex h-[600px] border border-slate-800 rounded-xl overflow-hidden bg-slate-900">
+      {/* Left Sidebar: List */}
+      <div className="w-1/3 border-r border-slate-800 flex flex-col min-w-[300px]">
+        {/* Toolbar */}
+        <div className="p-3 border-b border-slate-800 flex flex-col gap-3 bg-slate-900/50">
           <div className="flex gap-2">
-            <input className="flex-1 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200"
-              placeholder="e.g. A123456(7) or C-000123" value={query} onChange={(e)=>setQuery(e.target.value)} />
-            <button onClick={()=>{ setPage(1); fetchList(); }} className="px-3 py-1 bg-blue-600 text-white rounded flex items-center gap-1">
-              <Search size={14}/> Search
+            <select
+              className="bg-slate-800 border border-slate-700 rounded-md text-sm text-slate-200 px-2 py-1.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              value={resourceType}
+              onChange={(e) => setResourceType(e.target.value)}
+            >
+              <option value="Patient">Patient</option>
+              <option value="Encounter">Encounter</option>
+            </select>
+            
+            <button 
+              onClick={fetchList} 
+              className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-slate-400 transition-colors ml-auto"
+              title="Refresh"
+            >
+              <RefreshCw size={16} />
             </button>
-            <button onClick={fetchList} className="px-3 py-1 bg-slate-700 text-slate-200 rounded flex items-center gap-1">
-              <RefreshCw size={14}/> Refresh
-            </button>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2 text-slate-500" size={14} />
+            <input
+              className="w-full bg-slate-800 border border-slate-700 rounded-md pl-8 pr-2 py-1.5 text-sm text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder:text-slate-500 transition-all"
+              placeholder={`Search ${resourceType}...`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && fetchList()}
+            />
           </div>
         </div>
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">Page Size</label>
-          <select className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200"
-            value={limit} onChange={(e)=>setLimit(Number(e.target.value))}>
-            {[10,20,50,100].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
+
+        {/* List Content */}
+        <div className="flex-1 overflow-y-auto">
+          {loading && (
+            <div className="p-4 text-center text-slate-500 text-sm">Loading...</div>
+          )}
+          
+          {!loading && items.length === 0 && (
+            <div className="p-8 text-center text-slate-600 text-sm">No resources found</div>
+          )}
+
+          {!loading && items.map((it, idx) => {
+            const res = it.resource || {};
+            const isPatient = resourceType === "Patient";
+            
+            // Render logic based on resource type
+            let title = "Unknown";
+            let sub1 = "-";
+            let sub2 = "-";
+
+            if (isPatient) {
+              title = getPatientName(res, it.app);
+              sub1 = `ID: ${getIdentifierValue(res.identifier, "adminid")}`;
+              sub2 = `MRN: ${getIdentifierValue(res.identifier, "mrn")}`;
+            } else {
+              // Encounter logic
+              title = `Encounter: ${res.id || "No ID"}`;
+              sub1 = `Status: ${res.status || "-"}`;
+              sub2 = `Class: ${res.class?.code || "-"}`;
+            }
+
+            return (
+              <div
+                key={it._id || idx}
+                onClick={() => setSelected(it)}
+                className={`
+                  p-3 border-b border-slate-800 cursor-pointer transition-all
+                  hover:bg-slate-800/80
+                  ${selected === it ? "bg-blue-900/20 border-l-2 border-l-blue-500 pl-[10px]" : "border-l-2 border-l-transparent pl-3"}
+                `}
+              >
+                <div className="font-medium text-slate-200 text-sm truncate">{title}</div>
+                <div className="flex justify-between mt-1.5 text-xs text-slate-500">
+                  <span className="font-mono bg-slate-800/50 px-1 rounded">{sub1}</span>
+                  <span className="font-mono">{sub2}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Footer (Pagination info) */}
+        <div className="p-2 border-t border-slate-800 text-xs text-slate-500 text-center bg-slate-900/50">
+           Showing {items.length} of {total}
         </div>
       </div>
 
-      <div className="bg-slate-800 rounded border border-slate-700">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-800/70">
-            <tr className="text-left">
-              <th className="px-3 py-2 text-slate-300">_id</th>
-              <th className="px-3 py-2 text-slate-300">resource.id</th>
-              <th className="px-3 py-2 text-slate-300">adminid / caseNum</th>
-              <th className="px-3 py-2 text-slate-300">hosp/ward/spec</th>
-              <th className="px-3 py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it) => (
-              <tr key={it._id} className="border-t border-slate-700 hover:bg-slate-800/40">
-                <td className="px-3 py-2 text-slate-400">{it._id}</td>
-                <td className="px-3 py-2 text-slate-200">{it.resource?.id}</td>
-                <td className="px-3 py-2 text-slate-200">{it.search?.adminid || it.search?.caseNum || "-"}</td>
-                <td className="px-3 py-2 text-slate-400">{(it.search?.hospCode || "-")}/{(it.search?.wardCode || "-")}/{(it.search?.specCode || "-")}</td>
-                <td className="px-3 py-2">
-                  <button onClick={()=>setSelected(it)} className="px-2 py-1 text-xs bg-slate-700 hover:bg-slate-600 text-slate-100 rounded flex items-center gap-1">
-                    <Eye size={14}/> Open
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {items.length === 0 && <tr><td className="px-3 py-6 text-center text-slate-400" colSpan={5}>No items</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex justify-between items-center text-sm text-slate-400">
-        <div>Total: {total}</div>
-        <div className="flex items-center gap-2">
-          <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className="px-2 py-1 bg-slate-700 rounded disabled:opacity-50">Prev</button>
-          <span>Page {page}</span>
-          <button onClick={()=>setPage(p=>p+1)} disabled={(page*limit)>=total} className="px-2 py-1 bg-slate-700 rounded disabled:opacity-50">Next</button>
-        </div>
-      </div>
-
-      {selected && (
-        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <h3 className="text-slate-300 text-sm mb-1">FHIR Resource</h3>
-            <JsonEditor value={selected.resource} onChange={()=>{}} height="350px" readOnly />
+      {/* Right Content: JSON Editor */}
+      <div className="flex-1 flex flex-col bg-slate-950">
+        {selected ? (
+          <JsonEditor
+            value={JSON.stringify(selected, null, 2)}
+            readOnly={true}
+            height="100%"
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-slate-600 flex-col gap-3">
+            <div className="p-4 rounded-full bg-slate-900 border border-slate-800">
+                <Database size={32} className="opacity-40" />
+            </div>
+            <span className="text-sm font-medium opacity-60">Select a resource to view details</span>
           </div>
-          <div>
-            <h3 className="text-slate-300 text-sm mb-1">Envelope (app + search)</h3>
-            <JsonEditor value={{app: selected.app, search: selected.search}} onChange={()=>{}} height="350px" readOnly />
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

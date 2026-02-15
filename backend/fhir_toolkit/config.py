@@ -6,9 +6,10 @@ load_dotenv()
 
 class Settings(BaseModel):
     # MongoDB Settings (Existing)
-    mongodb_uri: str = os.getenv("MONGODB_URI", "mongodb://127.0.0.1:27017")
-    mongodb_db: str = os.getenv("MONGODB_DB", "fhir_demo")
-    mongodb_collection: str = os.getenv("MONGODB_COLLECTION", "fhir")
+    mongodb_uri: str = os.getenv("MONGODB_URI", "mongodb+srv://fhir:fhirGotapd54!@fhir.bd38rjg.mongodb.net")
+    mongodb_db: str = os.getenv("MONGODB_DB", "fhir")
+    collection_patient: str = os.getenv("COLLECTION_PATIENT", "FHIR_Patient")
+    collection_encounter: str = os.getenv("COLLECTION_ENCOUNTER", "FHIR_Encounter")
 
     # Postgres Settings (New)
     postgres_uri: str = os.getenv(

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Depends
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 
@@ -22,7 +22,9 @@ import urllib.error
 async def lifespan(app: FastAPI):
     await PostgresManager.connect()
     try:
-        create_indexes()
+        # Note: Index creation logic might need update for split collections
+        # create_indexes() 
+        pass
     except Exception as e:
         print(f"Warning: Could not create Mongo indexes: {e}")
     yield
@@ -31,11 +33,37 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="FHIR Hybrid Data API",
-    version="0.1.4",
+    version="0.1.5",
     description="API for accessing both NoSQL FHIR data and Relational SQL data.",
     openapi_tags=tags_metadata,
     lifespan=lifespan,
 )
+
+
+# -------------------------------------------------------------------------
+# Helper: Get Collection by Resource Type
+# -------------------------------------------------------------------------
+def get_fhir_collection(resource_type: str):
+    """
+    Route to specific MongoDB collection based on resource type.
+    Default collections: FHIR_Patient, FHIR_Encounter
+    """
+    client = get_client()
+    db = client[settings.mongodb_db]
+    
+    # Map resource types to collection names from settings or defaults
+    # Ensure settings has these fields or use defaults here
+    coll_patient = getattr(settings, "collection_patient", "FHIR_Patient")
+    coll_encounter = getattr(settings, "collection_encounter", "FHIR_Encounter")
+    
+    rt = resource_type.lower()
+    if rt == "patient":
+        return db[coll_patient]
+    elif rt == "encounter":
+        return db[coll_encounter]
+    else:
+        # Default fallback or raise error
+        return db[coll_patient]
 
 
 # -------------------------------------------------------------------------
@@ -75,9 +103,19 @@ def wipe_data(confirm: bool = False, tenant: str = None):
 
     client = get_client()
     db = client[settings.mongodb_db]
-    coll = db[settings.mongodb_collection]
-    res = coll.delete_many({"tenant": settings.tenant})
-    return {"deleted": res.deleted_count, "tenant": settings.tenant}
+    
+    # Wipe both collections
+    coll_pat = get_fhir_collection("Patient")
+    coll_enc = get_fhir_collection("Encounter")
+    
+    res1 = coll_pat.delete_many({}) # Wipe all for simplicity in demo
+    res2 = coll_enc.delete_many({})
+    
+    return {
+        "deleted_patients": res1.deleted_count, 
+        "deleted_encounters": res2.deleted_count, 
+        "tenant": settings.tenant
+    }
 
 
 # -------------------------------------------------------------------------
@@ -91,11 +129,16 @@ async def get_pg_table_data(table_name: str, limit: int = 50, offset: int = 0):
     """
     ALLOWED_TABLES = {
         "patient",
+        "patient_type",
         "patient_info_log",
+        "pmi_case",
         "address_detail",
+        "district",
+        "elderly_home_table",
         "document_type",
         "patient_hospital_data",
-        "hospital"
+        "hospital",
+        "patient_doc_info",
     }
 
     if table_name not in ALLOWED_TABLES:
@@ -113,124 +156,65 @@ async def get_pg_table_data(table_name: str, limit: int = 50, offset: int = 0):
 
 
 # -------------------------------------------------------------------------
-# Application API (kept as-is from your original)
+# INSPECTION ENDPOINTS (Data Viewer Support)
 # -------------------------------------------------------------------------
 
-@app.get("/api/v1/cpi_case/_by-team/", tags=["Application API"], summary="[SPEC] Get CPI cases by team (GET)")
-@app.post("/api/v1/cpi_case/_by-team/find", tags=["Application API"], summary="[SPEC] Get CPI cases by team (POST)")
-def spec_cpi_cases_by_team(
-    hospCode: str,
-    teamCode: Optional[str] = None,
-    wardCode: Optional[str] = None,
-    specCode: Optional[str] = None,
-    statusCode: Optional[str] = None,
-    caseType: Optional[str] = None,
-    limit: int = 20,
-    page: int = 1,
+@app.get("/inspect/distinctResourceTypes")
+def get_distinct_resource_types():
+    # Hardcoded for the new dual-collection architecture
+    return {"resourceTypes": ["Patient", "Encounter"]}
+
+
+@app.get("/inspect/resources")
+def inspect_resources(
+    resourceType: str = "Patient", 
+    q: Optional[str] = None, 
+    limit: int = 20, 
+    page: int = 1
 ):
-    q = {"tenant": settings.tenant, "resourceType": "Encounter", "search.hospCode": hospCode}
-    if teamCode:
-        q["search.teamCode"] = teamCode
-    if wardCode:
-        q["search.wardCode"] = wardCode
-    if specCode:
-        q["search.specCode"] = specCode
-    if statusCode:
-        q["search.statusCode"] = statusCode
-    if caseType:
-        q["search.caseType"] = caseType
+    """
+    Unified inspector for Data Viewer.
+    Routes to correct collection and applies basic search.
+    """
+    coll = get_fhir_collection(resourceType)
+    
+    # Basic filter (optional: add tenant check if needed)
+    filter_doc = {}
+    
+    if q:
+        # Search logic adapted for new JSON structure
+        regex_q = {"$regex": q, "$options": "i"}
+        
+        if resourceType == "Patient":
+            filter_doc["$or"] = [
+                # Search by FHIR Name text
+                {"resource.name.text": regex_q},
+                # Search by AdminID (in identifier array)
+                {"resource.identifier": {"$elemMatch": {"system": "adminid", "value": regex_q}}},
+                # Search by MRN (in identifier array)
+                {"resource.identifier": {"$elemMatch": {"system": "mrn:EDH", "value": regex_q}}}, # Adapt system as needed
+                # Search by App extension patientName
+                {"app.patientName": regex_q}
+            ]
+        elif resourceType == "Encounter":
+            filter_doc["$or"] = [
+                {"resource.id": regex_q},
+                {"resource.status": regex_q},
+                {"resource.class.code": regex_q}
+            ]
+        else:
+            # Generic fallback
+            filter_doc["resource.id"] = regex_q
 
-    client = get_client()
-    db = client[settings.mongodb_db]
-    coll = db[settings.mongodb_collection]
-
-    total = coll.count_documents(q)
-    enc_docs = list(
-        coll.find(q).sort("search.start", -1).skip((page - 1) * limit).limit(limit)
-    )
-
-    patient_ids = [d.get("search", {}).get("patientKey") for d in enc_docs]
-    patient_ids = list(filter(None, patient_ids))
-
-    patient_map = {}
-    if patient_ids:
-        p_cursor = coll.find(
-            {"tenant": settings.tenant, "resourceType": "Patient", "resource.id": {"$in": patient_ids}}
-        )
-        for p in p_cursor:
-            patient_map[p.get("resource", {}).get("id")] = p
-
-    data = []
-    for doc in enc_docs:
-        pid = doc.get("search", {}).get("patientKey")
-        pat = patient_map.get(pid)
-
-        p_payload = None
-        if pat:
-            p_payload = build_patient_payload(pat.get("resource"), pat.get("app"), pat.get("_id"))
-
-        payload = build_cpi_payload(doc.get("resource"), doc.get("app"), doc.get("_id"), None, p_payload)
-        data.append(payload)
-
-    return {"data": data, "count": total}
-
-
-@app.get("/api/v1/cpi_case/_by-mo/", tags=["Application API"])
-def spec_cpi_cases_by_mo(
-    hospCode: str,
-    doctorCode: Optional[str] = None,
-    specialistCode: Optional[str] = None,
-    caseType: Optional[List[str]] = Query(default=None),
-    statusCode: Optional[str] = "AC",
-    limit: int = 20,
-    page: int = 1,
-):
-    if caseType is None:
-        caseType = ["I", "A"]
-
-    q = {"tenant": settings.tenant, "resourceType": "Encounter", "search.hospCode": hospCode}
-    if doctorCode:
-        q["search.doctorCode"] = doctorCode
-    if specialistCode:
-        q["search.specialistCode"] = specialistCode
-    if statusCode:
-        q["search.statusCode"] = statusCode
-    if caseType:
-        q["search.caseType"] = {"$in": caseType}
-
-    client = get_client()
-    db = client[settings.mongodb_db]
-    coll = db[settings.mongodb_collection]
-
-    total = coll.count_documents(q)
-    enc_docs = list(
-        coll.find(q).sort("search.start", -1).skip((page - 1) * limit).limit(limit)
-    )
-
-    patient_ids = [d.get("search", {}).get("patientKey") for d in enc_docs]
-    patient_ids = list(filter(None, patient_ids))
-
-    patient_map = {}
-    if patient_ids:
-        p_cursor = coll.find(
-            {"tenant": settings.tenant, "resourceType": "Patient", "resource.id": {"$in": patient_ids}}
-        )
-        for p in p_cursor:
-            patient_map[p.get("resource", {}).get("id")] = p
-
-    data = []
-    for doc in enc_docs:
-        pid = doc.get("search", {}).get("patientKey")
-        pat = patient_map.get(pid)
-
-        p_payload = None
-        if pat:
-            p_payload = build_patient_payload(pat.get("resource"), pat.get("app"), pat.get("_id"))
-
-        payload = build_cpi_payload(doc.get("resource"), doc.get("app"), doc.get("_id"), None, p_payload)
-        data.append(payload)
-
-    return {"data": data, "count": total}
+    total = coll.count_documents(filter_doc)
+    cursor = coll.find(filter_doc).skip((page - 1) * limit).limit(limit)
+    
+    items = []
+    for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        items.append(doc)
+        
+    return {"items": items, "total": total}
 
 
 # -------------------------------------------------------------------------
@@ -280,7 +264,6 @@ async def _get_tapdata_token() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail="TAPDATA_ACCESS_CODE is not configured")
 
     async with _TAPDATA_LOCK:
-        # double-check after acquiring lock
         now = time.time()
         token = _TAPDATA_CACHE.get("token")
         expires_at = float(_TAPDATA_CACHE.get("expires_at") or 0.0)
