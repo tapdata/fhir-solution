@@ -23,36 +23,58 @@ export default function FhirSyntheticPanel() {
       "sex",
       "dob",
       "marital_status",
-      "phone",
+      "home_phone",
+      "office_phone",
       "patient_type",
       "update_hospital",
+      "death_indicator",
+      "death_date",
+      "access_code",
+      "address_id",
+      "cccode1",
+      "cccode2",
+      "cccode3",
+      "cccode4",
+      "cccode5",
+      "cccode6"
     ],
-    patient_type: [
-      "patient_type",
-      "description",
-      "effective_dtm",
-      "patient_group",
-      "pay_code_type",
-      "active_status",
+    patient_info_log: [
+      "patient_key", 
+      "doc_code", 
+      "doc_no", 
+      "old_doc_code", 
+      "old_doc_no"
     ],
-    pmi_case: [
-      "hospital_code",
-      "case_no",
-      "patient_key",
-      "case_type",
-      "adm_dtm",
-      "discharge_dtm",
-      "adm_ward_code",
-      "adm_specialty_code",
+    address_detail: [
+      "record_id", 
+      "room", 
+      "floor", 
+      "building", 
+      "street", 
+      "district", 
+      "city", 
+      "state", 
+      "country"
     ],
-    patient_info_log: ["patient_key", "info_type", "doc_code", "doc_no", "upd_dtm", "upd_by"],
-    address_detail: ["record_id", "bldg", "estate", "house_no", "street", "district_code"],
-    district: ["district_code", "district_name", "district_board", "district_area"],
-    elderly_home_table: ["eh_code", "eh_name", "eh_address", "eh_district", "eh_phone"],
-    document_type: ["document_type", "document_code", "description", "adminid_type"],
-    patient_hospital_data: ["patient_key", "hospital_code", "mrn", "update_by", "row_update_datetime"],
-    hospital: ["hospital_code", "hospital_name", "active_status"],
-    patient_doc_info: ["patient_key", "doc_code", "doc_no", "upd_dtm"],
+    document_type: [
+      "document_type", 
+      "document_code", 
+      "description", 
+      "adminid_type", 
+      "pay_code"
+    ],
+    patient_hospital_data: [
+      "patient_key", 
+      "hospital_code", 
+      "mrn", 
+      "update_by", 
+      "row_update_datetime"
+    ],
+    hospital: [
+      "hospital_code", 
+      "hospital_name", 
+      "active_status"
+    ]
   };
 
   const displayColumns = columnsMap[activeTab] || [];

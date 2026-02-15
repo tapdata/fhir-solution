@@ -91,16 +91,11 @@ async def get_pg_table_data(table_name: str, limit: int = 50, offset: int = 0):
     """
     ALLOWED_TABLES = {
         "patient",
-        "patient_type",
         "patient_info_log",
-        "pmi_case",
         "address_detail",
-        "district",
-        "elderly_home_table",
         "document_type",
         "patient_hospital_data",
-        "hospital",
-        "patient_doc_info",
+        "hospital"
     }
 
     if table_name not in ALLOWED_TABLES:
