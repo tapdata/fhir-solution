@@ -67,14 +67,11 @@ export default function FhirDataTransformation({ onNavigate }) {
           {/* Data Processing -> View data transformation */}
           <div className="absolute left-[29%] top-0 transform -translate-x-1/2">
             <button
-              onClick={handleOpenTapdataDataflow}
-              disabled={opening}
+              onClick={() => onNavigate("transformation")}
               className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-medium rounded-md shadow-sm transition-all flex items-center gap-2"
-              title="Open Tapdata Dataflow"
             >
-              {opening ? <Loader2 className="animate-spin" size={14} /> : null}
               View transformation
-              <ExternalLink size={14} />
+              <ArrowRight size={14} />
             </button>
           </div>
 

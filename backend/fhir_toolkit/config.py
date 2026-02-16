@@ -6,14 +6,15 @@ load_dotenv()
 
 class Settings(BaseModel):
     # MongoDB Settings (Existing)
-    mongodb_uri: str = os.getenv("MONGODB_URI", "mongodb://127.0.0.1:27017")
-    mongodb_db: str = os.getenv("MONGODB_DB", "fhir_demo")
-    mongodb_collection: str = os.getenv("MONGODB_COLLECTION", "fhir")
+    mongodb_uri: str = os.getenv("MONGODB_URI", "mongodb+srv://fhir:fhirGotapd54!@fhir.bd38rjg.mongodb.net")
+    mongodb_db: str = os.getenv("MONGODB_DB", "fhir")
+    collection_patient: str = os.getenv("COLLECTION_PATIENT", "FHIR_Patient")
+    collection_encounter: str = os.getenv("COLLECTION_ENCOUNTER", "FHIR_Encounter")
 
     # Postgres Settings (New)
     postgres_uri: str = os.getenv(
         "POSTGRES_URI",
-        "postgresql://postgres:Gotapd54!@127.0.0.1:5432/postgres"
+        "postgresql://postgres:Gotapd54!@47.76.248.214:5432/postgres"
     )
 
     # Common
@@ -25,7 +26,7 @@ class Settings(BaseModel):
     tapdata_base_url: str = os.getenv("TAPDATA_BASE_URL", "http://113.98.206.142:3030")
     tapdata_access_code: str = os.getenv(
         "TAPDATA_ACCESS_CODE",
-        "3324cfdf-7d3e-4792-bd32-571638d4562e"
+        "d9918d20568bc0a5c550685fdca4453d"
     )
     # 预留刷新提前量（秒），避免临界过期
     tapdata_token_skew_seconds: int = int(os.getenv("TAPDATA_TOKEN_SKEW_SECONDS", "60"))

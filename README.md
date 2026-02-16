@@ -1,4 +1,10 @@
 # Hybrid FHIR Project
+> [!NOTE]
+>
+> This is a combined solution based on the fork of the MongoDB GitHub repository (https://github.com/mongodb-industry-solutions/hybrid-fhir-odl).
+
+
+
 A comprehensive FHIR R4 compliant healthcare data management system built with MongoDB backend and TapData pipelines.   Featuring advanced search capabilities and an interactive API demonstrator. This solution leverages Tapdata’s CDC data pipeline to replicate data from legacy system and transform proprietary healthcare data models into interoperable FHIR standards, enabling seamless healthcare interoperability without modifying your existing business applications. 
 
 
@@ -12,6 +18,7 @@ tapdata-fhir/
 │   │   ├── api.py             # FastAPI endpoints (3 APIs)
 │   │   ├── search_builders.py # Advanced FHIR search logic
 │   │   ├── db.py              # MongoDB connection
+│   │   ├── db_pg.py           # PostgreSQL connection
 │   │   ├── config.py          # Configuration
 │   │   ├── synth.py           # Legacy synthetic data inspection in PG
 │   │   ├── transform.py       # Legacy data and FHIR model structure transformation
@@ -22,8 +29,9 @@ tapdata-fhir/
 │   ├── app/                   # Next.js app router
 │   ├── components/            # React components
 │   │   └── views/fhir/        # FHIR-specific views
-│   │       ├── FhirApiTester.jsx      # Interactive API demonstrator
-│   │       ├── FhirResourceBrowser.jsx # Resource browser
+│   │       ├── FhirOverview.jsx        # Architecture Overview
+│   │       ├── FhirApiTester.jsx       # Interactive API demonstrator
+│   │       ├── FhirResourceBrowser.jsx # FHIR Resource browser
 │   │       └── LegacySyntheticPanel.jsx  # Legacy synthetic data UI
 │   │       └── DataTransformation.jsx  # Transformation UI and Tapdata demo link
 │   ├── public/fhir-config/    # FHIR search configuration
@@ -80,15 +88,10 @@ This project includes an external link to Tapdata Cloud to demonstrate the real-
 ### 1. Backend Setup
 
 ```bash
-# Set environment variables
-cp .env.local.example .env.local
-# Edit .env.local with your MongoDB URI and tenant
-cp ./backend/.env.sample ./backend/.env
-
 # Start backend server
 ./start-server.sh
 
-# Backend runs on http://localhost:8000
+# Backend runs on http://localhost:3100
 ```
 
 ### 2. Frontend Setup
@@ -100,12 +103,12 @@ npm install
 cd ..
 ./start-frontend.sh
 
-# Frontend runs on http://localhost:3000
+# Frontend runs on http://localhost:3101
 ```
 
 ### 3. Explore the System
 
-Visit http://localhost:3000 and explore:
+Visit http://localhost:3101 and explore:
 
 1. **Synthetic Data Tab**: Browse original relational data from PostgreSQL
 
@@ -115,71 +118,18 @@ Visit http://localhost:3000 and explore:
 
 4. **FHIR API Tab**: Execute 31+ pre-built query examples
 
-   
-
-## 📚 API Documentation
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI Spec**: http://localhost:8000/openapi.json
 
 ## 🎯 Usage Examples
 
 ### Via Interactive Demonstrator (Recommended)
 
-1. Open http://localhost:3000
+1. Open http://localhost:3101
 2. Navigate to "Synthetic Data Tab" and check the legacy relational data
 3. Navigate to "Data Transformation Tab" and check the data transformation
 4. Click "view the process" button to browse the data transformation tasks and processes
 5. Navigate to "FHIR API Tab"
 6. Click any example button (e.g., "Female Patients")
 7. Query executes automatically with results displayed
-
-### Via API (cURL)
-
-```bash
-# Search for female patients (accelerated mode)
-curl -H "x-search-mode: accelerated" \
-     "http://localhost:8000/fhir/Patient?gender=female&limit=10"
-
-# Find encounters for a specific patient (cross-resource)
-curl "http://localhost:8000/fhir/Encounter?subject.identifier=id|A224515(2)&limit=10"
-
-# Complex query: Recent encounters for a doctor at specific hospital
-curl "http://localhost:8000/fhir/Encounter?participant.identifier=D-1310&service-provider=QH&date-start=ge2025-09-01&limit=10"
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-```bash
-# Tapdata
-TAPDATA_API_URL=https://cloud.tapdata.net/api
-TAPDATA_TENANT_ID=your-tenant-id
-
-# === PostgreSQL Configuration (Source Data) ===
-PG_HOST=ec2-instance.aws.amazonaws.com
-PG_PORT=5432
-PG_DATABASE=healthcare_db
-PG_USER=postgres
-PG_PASSWORD=secure-password
-
-# Frontend (optional)
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
-NEXT_PUBLIC_ENABLE_FHIR=true
-```
-
-## 📖 Documentation
-
-- [Setup Guide](docs/SETUP_COMPLETE.md)
-- [API Documentation](docs/API_DOCS_INTEGRATION.md)
-- [Three APIs Overview](docs/THREE_APIS_COMPLETE.md)
-- [Web Application Guide](docs/WEB_APP_COMPLETE.md)
-- [Frontend Access](docs/FRONTEND_ACCESS.md)
-- [Quick Start](QUICK_START.md)
-- [Getting Started](START_HERE.md)
-- Field mappings (`docs/SPEC_FIELD_MAPPING.md`) – regenerate via `python3 scripts/generate_field_mapping.py`
 
 ## 🏥 Healthcare Data Model
 
@@ -193,11 +143,8 @@ Resources are stored with three sections:
   "resourceType": "Patient",
   "resource": { /* Standard FHIR resource */ },
   "app": { /* Application-specific data */ },
-  "search": { /* Pre-indexed search fields */ }
 }
 ```
-
-
 
 ## 🌟 Key Capabilities
 
